@@ -54,3 +54,6 @@ Update function will allow the user to change the password of a stored account.
 Delete function will allow the user to permanently delete an account. 
 
 Exit&Save function will rewrite the dictionary back to the password manager file, and exit the script.
+
+## App on Streamlit Cloud:
+https://passwordmanager-wd6oslmstnmzfcufozzcwz.streamlit.app/
