@@ -2,7 +2,6 @@ import os
 import base64
 import random
 import string
-
 import streamlit as st
 
 # ================== Constants ==================
@@ -114,10 +113,11 @@ def apply_custom_style() -> None:
 # ================== Data helpers ==================
 
 def load_passwords() -> dict:
-    """Load stored passwords from file into a dictionary."""
+    """This function loads stored passwords from a file."""
     storage = {}
     if os.path.exists(PASSWORDS_FILE):
         with open(PASSWORDS_FILE, "r") as f:
+            #Read each line and split the account and encoded password.
             for line in f:
                 if ":" in line:
                     account, encoded_pw = line.strip().split(":", 1)
@@ -126,14 +126,15 @@ def load_passwords() -> dict:
 
 
 def save_passwords(storage: dict) -> None:
-    """Save passwords dictionary to file."""
+    """This function saves passwords to the file.."""
     with open(PASSWORDS_FILE, "w") as f:
+        #Write each account and encoded password to the file.
         for account, encoded_pw in storage.items():
             f.write(f"{account}:{encoded_pw}\n")
 
 
 def evaluate_password(pw: str) -> dict:
-    """Evaluate password and return details + strength."""
+    """This function evaluates the strength of the given password."""
     score = 0
     result = {
         "length_ok": False,
@@ -143,28 +144,34 @@ def evaluate_password(pw: str) -> dict:
         "has_symbol": False,
         "strength": "Weak",
     }
-
+    
+    #Check if the password is at least 8 characters long.
     if len(pw) >= 8:
         result["length_ok"] = True
         score += 20
-
+        
+    #Check for the presence of an uppercase letter in the password.
     if any(char.isupper() for char in pw):
         result["has_upper"] = True
         score += 20
 
+    #Check for the presence of a lowercase letter in the password.
     if any(char.islower() for char in pw):
         result["has_lower"] = True
         score += 20
 
+    #Check for the presence of a digit in the password.
     if any(char.isdigit() for char in pw):
         result["has_digit"] = True
         score += 20
 
+    #Check for the presence of a special symbol in the password.
     symbols = "!@#$%^&*()-_=+[]{};:,.<>/"
     if any(char in symbols for char in pw):
         result["has_symbol"] = True
         score += 20
 
+    #Determine the password strength based on the total score.
     if score == 100:
         result["strength"] = "Strong"
     elif 80 >= score >= 50:
@@ -177,38 +184,43 @@ def evaluate_password(pw: str) -> dict:
 
 def password_generator(length: int, preference: list[str]) -> tuple[str, str]:
     """
-    Generate a password of given length.
+    This function return generated password based on givin length and preference
     preference = [upper?, digits?, symbols?] with values "yes"/"no".
     """
-    all_pools = []
-    password_chars = []
+    all_char = []
+    password = []
 
-    # Always include lowercase letters
+    #Always include lowercase letters.
     lowercase = string.ascii_lowercase
-    all_pools.append(lowercase)
-    password_chars.append(random.choice(lowercase))
+    all_char.append(lowercase)
+    password.append(random.choice(lowercase))
 
+     #Specify the password character types based on user's choice.
     if preference[0] == "yes":
         uppercase = string.ascii_uppercase
-        all_pools.append(uppercase)
-        password_chars.append(random.choice(uppercase))
+        all_char.append(uppercase)
+        #Include at least one uppercase letters.
+        password.append(random.choice(uppercase))
 
     if preference[1] == "yes":
         digits = string.digits
-        all_pools.append(digits)
-        password_chars.append(random.choice(digits))
+        all_char.append(digits)
+        #Include at least one number.
+        password.append(random.choice(digits))
 
     if preference[2] == "yes":
         symbols = string.punctuation
-        all_pools.append(symbols)
-        password_chars.append(random.choice(symbols))
+        all_char.append(symbols)
+        #Include at least one symbol.
+        password.append(random.choice(symbols))
 
-    # Complete password to required length
-    while len(password_chars) < length:
-        pool = random.choice(all_pools)
-        password_chars.append(random.choice(pool))
+    #Complete password to required length.
+    while len(password) < length:
+        chars = random.choice(all_char)
+        password.append(random.choice(chars))
 
-    password = "".join(password_chars[:length])
+    password = "".join(password[:length])
+    #Evaluate the generated password.
     eval_results = evaluate_password(password)
     return password, eval_results["strength"]
 
@@ -271,6 +283,7 @@ def login_screen() -> None:
 # ================== Pages / UI functions ==================
 
 def add_password_ui() -> None:
+    """This function allow the user to a manually add a new account to the list."""
     st.subheader("Add Password")
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -295,6 +308,7 @@ def add_password_ui() -> None:
 
 
 def update_password_ui() -> None:
+    """This function updates the password for a specified account."""
     st.subheader("Update Password")
 
     if not st.session_state.storage:
@@ -316,16 +330,19 @@ def update_password_ui() -> None:
             evaluation = evaluate_password(new_pw)
             st.write(f"Password strength: **{evaluation['strength']}**")
 
+            #Check if the new password is strong enough.
             if evaluation["strength"] == "Weak":
                 st.error("Password too weak — update denied.")
                 return
 
+            #Encode the new password and update the storage.
             encoded = base64.b64encode(new_pw.encode()).decode()
             st.session_state.storage[selected_account] = encoded
             st.success("Password updated successfully.")
 
 
 def delete_password_ui() -> None:
+    """This function deletes a specified account's password."""
     st.subheader("Delete Password")
 
     if not st.session_state.storage:
@@ -336,11 +353,13 @@ def delete_password_ui() -> None:
     selected_account = st.selectbox("Select account to delete", accounts)
 
     if st.button("Delete this account"):
+        #Remove the account from storage.
         del st.session_state.storage[selected_account]
         st.success(f"Deleted password for **{selected_account}**.")
 
 
 def generate_password_ui() -> None:
+    """This function contains the ui settings for generated password page."""
     st.subheader("Generate Password")
 
     length = st.number_input(
@@ -400,21 +419,37 @@ def generate_password_ui() -> None:
 
 
 def view_passwords_ui() -> None:
+    """
+    This function displays stored account passwords from the 'storage' dictionary.
+    
+    Features:
+    - Shows the total number of saved passwords.
+    - Allows optional searching for a specific account name.
+    - Provides the option to show passwords decoded from Base64 OR show only account names.
+    
+    Parameters:
+    storage (dict): A dictionary where keys are account names and values are Base64-encoded passwords.
+    
+    Returns:
+    str: A formatted string containing either a list of accounts or accounts with their decoded passwords.
+    """
+    
     st.subheader("View Saved Accounts")
 
+    #If storage is empty, return a simple message.
     storage = st.session_state.storage
     if not storage:
         st.info("No passwords stored.")
         return
-
+        
+    #Ask user if they want to search for a specific account.
     query = st.text_input("Search by account name (optional)")
     show_passwords = st.checkbox("Show passwords", value=False)
 
-    filtered = {
-        acc: pw for acc, pw in storage.items()
-        if not query or query.lower() in acc.lower()
-    }
+    is_match = lambda acc: not query or query.lower() in acc.lower()
+    filtered = {acc: pw for acc, pw in storage.items() if is_match(acc)}
 
+    #If search found nothing.
     if not filtered:
         st.warning(f"No results found for '{query}'.")
         return
@@ -426,6 +461,7 @@ def view_passwords_ui() -> None:
 
     for i, (acc, enc_pw) in enumerate(sorted(filtered.items()), start=1):
         if show_passwords:
+            #Decode Base64-encoded password before showing it.
             password_display = base64.b64decode(enc_pw.encode()).decode()
         else:
             password_display = "<span class='password-hidden'>●●●●●●●●</span>"
@@ -522,3 +558,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
